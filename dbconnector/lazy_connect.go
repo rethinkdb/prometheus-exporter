@@ -9,15 +9,17 @@ import (
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
+// ConnectRethinkDB establishes lazy rethinkdb connection
+// It will make attempt to connect with first call and reconnect after every error
 func ConnectRethinkDB(
 	addresses []string,
 	username, password string,
 	tlsConfig *tls.Config,
 	poolSize int,
-) *lazySession {
+) *LazyRethinkSession {
 	const systemDatabase = "rethinkdb"
 
-	return &lazySession{
+	return &LazyRethinkSession{
 		opts: r.ConnectOpts{
 			Addresses: addresses,
 			Database:  systemDatabase,
@@ -29,21 +31,26 @@ func ConnectRethinkDB(
 	}
 }
 
-type lazySession struct {
+// LazyRethinkSession is a connection to the rethinkdb.
+// It implements r.QueryExecutor interface.
+// It will make attempt to connect with first call and reconnect after every error.
+type LazyRethinkSession struct {
 	*r.Session
 
 	opts r.ConnectOpts
 	m    sync.Mutex
 }
 
-func (l *lazySession) Close() error {
+// Close closes connections
+func (l *LazyRethinkSession) Close() error {
 	if l.Session != nil {
 		return l.Session.Close()
 	}
 	return nil
 }
 
-func (l *lazySession) IsConnected() bool {
+// IsConnected returns true if session has a valid connection.
+func (l *LazyRethinkSession) IsConnected() bool {
 	if l.Session == nil {
 		err := l.connect()
 		if err != nil {
@@ -63,7 +70,8 @@ func (l *lazySession) IsConnected() bool {
 	return is
 }
 
-func (l *lazySession) Query(ctx context.Context, q r.Query) (*r.Cursor, error) {
+// Query executes a ReQL query using the session to connect to the database
+func (l *LazyRethinkSession) Query(ctx context.Context, q r.Query) (*r.Cursor, error) {
 	if l.Session == nil {
 		err := l.connect()
 		if err != nil {
@@ -82,7 +90,8 @@ func (l *lazySession) Query(ctx context.Context, q r.Query) (*r.Cursor, error) {
 	return cur, err
 }
 
-func (l *lazySession) Exec(ctx context.Context, q r.Query) error {
+// Exec executes a ReQL query using the session to connect to the database
+func (l *LazyRethinkSession) Exec(ctx context.Context, q r.Query) error {
 	if l.Session == nil {
 		err := l.connect()
 		if err != nil {
@@ -101,7 +110,7 @@ func (l *lazySession) Exec(ctx context.Context, q r.Query) error {
 	return err
 }
 
-func (l *lazySession) connect() error {
+func (l *LazyRethinkSession) connect() error {
 	l.m.Lock()
 	defer l.m.Unlock()
 

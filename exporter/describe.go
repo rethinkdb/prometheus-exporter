@@ -9,6 +9,7 @@ const (
 	writtenOperation = "written"
 )
 
+// Describe sends metrics descriptions to the prometheus chan
 func (e *RethinkdbExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.metrics.clusterClientConnections
 	ch <- e.metrics.clusterDocsPerSecond

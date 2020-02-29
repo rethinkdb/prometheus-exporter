@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 )
 
+// PrepareTLSConfig creates tls.Config with certificate files
 func PrepareTLSConfig(caFile, certFile, keyFile string) (*tls.Config, error) {
 	config := new(tls.Config)
 

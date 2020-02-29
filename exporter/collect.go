@@ -12,6 +12,7 @@ import (
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
+// Collect send collected metrics values to the prometheus chan
 func (e *RethinkdbExporter) Collect(ch chan<- prometheus.Metric) {
 	start := time.Now()
 

@@ -52,6 +52,7 @@ var rootCmd = &cobra.Command{
 	},
 }
 
+// Execute runs root command of cli of the exporter
 func Execute() error {
 	return rootCmd.Execute()
 }

@@ -11,6 +11,7 @@ import (
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
+// RethinkdbExporter is a prometheus exporter of the rethinkdb statistics
 type RethinkdbExporter struct {
 	rconn r.QueryExecutor
 
@@ -46,6 +47,7 @@ func (l promHTTPLogger) Println(v ...interface{}) {
 	log.Error().Msgf("msg: %v", fmt.Sprint(v...))
 }
 
+// New creates a new instance of prometheus rethinkdb exporter
 func New(
 	listenAddress string,
 	telemetryPath string,
@@ -97,6 +99,7 @@ func New(
 	return exporter, nil
 }
 
+// ListenAndServe runs prometheus http-server for exporting stats
 func (e *RethinkdbExporter) ListenAndServe() error {
 	serv := http.Server{Addr: e.listenAddress, Handler: e.mux}
 	return serv.ListenAndServe()
