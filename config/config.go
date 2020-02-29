@@ -2,30 +2,30 @@ package config
 
 type Config struct {
 	Web struct {
-		ListenAddress string
-		TelemetryPath string
-	}
+		ListenAddress string `mapstructure:"listen_address"`
+		TelemetryPath string `mapstructure:"telemetry_path"`
+	} `mapstructure:"web"`
 
 	Stats struct {
-		TableDocsEstimates bool
-	}
+		TableDocsEstimates bool `mapstructure:"table_docs_estimates"`
+	} `mapstructure:"stats"`
 
 	DB struct {
-		RethinkdbAddresses []string
+		RethinkdbAddresses []string `mapstructure:"rethinkdb_addresses"`
 
-		Username string
-		Password string
+		Username string `mapstructure:"username"`
+		Password string `mapstructure:"password"`
 
-		EnableTLS       bool
-		CAFile          string
-		CertificateFile string
-		KeyFile         string
+		EnableTLS       bool   `mapstructure:"enable_tls"`
+		CAFile          string `mapstructure:"ca_file"`
+		CertificateFile string `mapstructure:"certificate_file"`
+		KeyFile         string `mapstructure:"key_file"`
 
-		ConnectionPoolSize int
-	}
+		ConnectionPoolSize int `mapstructure:"connection_pool_size"`
+	} `mapstructure:"db"`
 
 	Log struct {
-		JSONOutput bool
-		Debug      bool
-	}
+		JSONOutput bool `mapstructure:"json_output"`
+		Debug      bool `mapstructure:"debug"`
+	} `mapstructure:"log"`
 }

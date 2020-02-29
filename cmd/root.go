@@ -75,33 +75,33 @@ func init() {
 
 	rootCmd.PersistentFlags().Bool("stats.table-estimates", false, "Collect docs count estimates for each table")
 
-	_ = viper.BindPFlag("Log.Debug", rootCmd.PersistentFlags().Lookup("log.debug"))
-	_ = viper.BindEnv("Log.Debug", "LOG_DEBUG")
-	_ = viper.BindPFlag("Log.JSONOutput", rootCmd.PersistentFlags().Lookup("log.json-output"))
-	_ = viper.BindEnv("Log.JSONOutput", "LOG_JSON_OUTPUT")
+	_ = viper.BindPFlag("log.debug", rootCmd.PersistentFlags().Lookup("log.debug"))
+	_ = viper.BindEnv("log.debug", "LOG_DEBUG")
+	_ = viper.BindPFlag("log.json_output", rootCmd.PersistentFlags().Lookup("log.json-output"))
+	_ = viper.BindEnv("log.json_output", "LOG_JSON_OUTPUT")
 
-	_ = viper.BindPFlag("DB.RethinkdbAddresses", rootCmd.PersistentFlags().Lookup("db.address"))
-	_ = viper.BindEnv("DB.RethinkdbAddresses", "DB_ADDRESSES")
-	_ = viper.BindPFlag("DB.Username", rootCmd.PersistentFlags().Lookup("db.username"))
-	_ = viper.BindEnv("DB.Username", "DB_USERNAME")
-	_ = viper.BindPFlag("DB.Password", rootCmd.PersistentFlags().Lookup("db.password"))
-	_ = viper.BindEnv("DB.Password", "DB_PASSWORD")
-	_ = viper.BindPFlag("DB.EnableTLS", rootCmd.PersistentFlags().Lookup("db.enable-tls"))
-	_ = viper.BindEnv("DB.EnableTLS", "DB_ENABLE_TLS")
-	_ = viper.BindPFlag("DB.CAFile", rootCmd.PersistentFlags().Lookup("db.ca"))
-	_ = viper.BindEnv("DB.CAFile", "DB_CA")
-	_ = viper.BindPFlag("DB.CertificateFile", rootCmd.PersistentFlags().Lookup("db.cert"))
-	_ = viper.BindEnv("DB.CertificateFile", "DB_CERT")
-	_ = viper.BindPFlag("DB.KeyFile", rootCmd.PersistentFlags().Lookup("db.key"))
-	_ = viper.BindEnv("DB.KeyFile", "DB_KEY")
-	_ = viper.BindPFlag("DB.ConnectionPoolSize", rootCmd.PersistentFlags().Lookup("db.pool-size"))
-	_ = viper.BindEnv("DB.ConnectionPoolSize", "DB_POOL_SIZE")
-	_ = viper.BindPFlag("Web.ListenAddress", rootCmd.PersistentFlags().Lookup("web.listen-address"))
-	_ = viper.BindEnv("Web.ListenAddress", "WEB_LISTEN_ADDRESS")
-	_ = viper.BindPFlag("Web.TelemetryPath", rootCmd.PersistentFlags().Lookup("web.telemetry-path"))
-	_ = viper.BindEnv("Web.TelemetryPath", "WEB_TELEMETRY_PATH")
-	_ = viper.BindPFlag("Stats.TableDocsEstimates", rootCmd.PersistentFlags().Lookup("stats.table-estimates"))
-	_ = viper.BindEnv("Stats.TableDocsEstimates", "STATS_TABLE_ESTIMATES")
+	_ = viper.BindPFlag("db.rethinkdb_addresses", rootCmd.PersistentFlags().Lookup("db.address"))
+	_ = viper.BindEnv("db.rethinkdb_addresses", "DB_ADDRESSES")
+	_ = viper.BindPFlag("db.username", rootCmd.PersistentFlags().Lookup("db.username"))
+	_ = viper.BindEnv("db.username", "DB_USERNAME")
+	_ = viper.BindPFlag("db.password", rootCmd.PersistentFlags().Lookup("db.password"))
+	_ = viper.BindEnv("db.password", "DB_PASSWORD")
+	_ = viper.BindPFlag("db.enable_tls", rootCmd.PersistentFlags().Lookup("db.enable-tls"))
+	_ = viper.BindEnv("db.enable_tls", "DB_ENABLE_TLS")
+	_ = viper.BindPFlag("db.ca_file", rootCmd.PersistentFlags().Lookup("db.ca"))
+	_ = viper.BindEnv("db.ca_file", "DB_CA")
+	_ = viper.BindPFlag("db.certificate_file", rootCmd.PersistentFlags().Lookup("db.cert"))
+	_ = viper.BindEnv("db.certificate_file", "DB_CERT")
+	_ = viper.BindPFlag("db.key_file", rootCmd.PersistentFlags().Lookup("db.key"))
+	_ = viper.BindEnv("db.key_file", "DB_KEY")
+	_ = viper.BindPFlag("db.connection_pool_size", rootCmd.PersistentFlags().Lookup("db.pool-size"))
+	_ = viper.BindEnv("db.connection_pool_size", "DB_POOL_SIZE")
+	_ = viper.BindPFlag("web.listen_address", rootCmd.PersistentFlags().Lookup("web.listen-address"))
+	_ = viper.BindEnv("web.listen_address", "WEB_LISTEN_ADDRESS")
+	_ = viper.BindPFlag("web.telemetry_path", rootCmd.PersistentFlags().Lookup("web.telemetry-path"))
+	_ = viper.BindEnv("web.TelemetryPath", "WEB_TELEMETRY_PATH")
+	_ = viper.BindPFlag("stats.table_docs_estimates", rootCmd.PersistentFlags().Lookup("stats.table-estimates"))
+	_ = viper.BindEnv("stats.table_docs_estimates", "STATS_TABLE_ESTIMATES")
 
 	cobra.OnInitialize(initConfig)
 }
@@ -114,39 +114,15 @@ func initConfig() {
 		viper.AddConfigPath(".")
 		viper.SetConfigName("prometheus-exporter")
 	}
-	//decoderOption := func(cfg *mapstructure.DecoderConfig) {
-	//	cfg.TagName = "json"
-	//	cfg.DecodeHook = mapstructure.ComposeDecodeHookFunc(
-	//		cfg.DecodeHook,
-	//		func(cfgt reflect.Type, strt reflect.Type, data interface{}) (interface{}, error) {
-	//			if cfgt.Kind() != reflect.Map { // любой конфиг в файле на верхнем уровне это key-value
-	//				return data, nil
-	//			}
-	//			if strt.Kind() != reflect.Struct { // любой конфиг в коде на верхнем это структура
-	//				return data, nil
-	//			}
-	//			raw, err := json.Marshal(data) // кодируем map[string]interface{} в json
-	//			if err != nil {
-	//				return nil, err
-	//			}
-	//			out := reflect.New(strt).Interface() // создаём экземпляр типа конфига
-	//			err = json.Unmarshal(raw, out)       // декодируем json в тип конфига
-	//			return out, err                      // mapstructure decoder увидит, что типы конфига совпадают и сделает просто reflect.Set()
-	//		},
-	//	)
-	//}
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			log.Fatal().Err(err).Msg("failed to read config file")
 		}
 	}
-	//log.Info().Interface("viper", viper.AllSettings()).Msg("viper")
-	//if err := viper.Unmarshal(&cfg, decoderOption); err != nil {
 	if err := viper.Unmarshal(&cfg); err != nil {
 		log.Fatal().Err(err).Msg("failed to parse config")
 	}
-	//log.Info().Interface("cfg", cfg).Msg("cfg")
 }
 
 func initLogging(cfg config.Config) {
