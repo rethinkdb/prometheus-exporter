@@ -20,23 +20,23 @@ type RethinkdbExporter struct {
 	mux           *http.ServeMux
 
 	metrics struct {
-		clusterClientConnections prometheus.Gauge
-		clusterDocsPerSecond     *prometheus.GaugeVec
+		clusterClientConnections *prometheus.Desc
+		clusterDocsPerSecond     *prometheus.Desc
 
-		serverClientConnections *prometheus.GaugeVec
-		serverQueriesPerSecond  *prometheus.GaugeVec
-		serverDocsPerSecond     *prometheus.GaugeVec
+		serverClientConnections *prometheus.Desc
+		serverQueriesPerSecond  *prometheus.Desc
+		serverDocsPerSecond     *prometheus.Desc
 
-		tableDocsPerSecond *prometheus.GaugeVec
-		tableRowsCount     *prometheus.GaugeVec
+		tableDocsPerSecond *prometheus.Desc
+		tableRowsCount     *prometheus.Desc
 
-		tableReplicaDocsPerSecond *prometheus.GaugeVec
-		tableReplicaCacheBytes    *prometheus.GaugeVec
-		tableReplicaIO            *prometheus.GaugeVec
-		tableReplicaDataBytes     *prometheus.GaugeVec
+		tableReplicaDocsPerSecond *prometheus.Desc
+		tableReplicaCacheBytes    *prometheus.Desc
+		tableReplicaIO            *prometheus.Desc
+		tableReplicaDataBytes     *prometheus.Desc
 
-		scrapeLatency prometheus.Gauge
-		scrapeErrors  prometheus.Gauge
+		scrapeLatency *prometheus.Desc
+		scrapeErrors  *prometheus.Desc
 	}
 }
 

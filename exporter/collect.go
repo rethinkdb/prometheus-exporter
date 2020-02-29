@@ -19,10 +19,8 @@ func (e *RethinkdbExporter) Collect(ch chan<- prometheus.Metric) {
 	errcount := e.collectRethinkStats(ctx, ch)
 
 	elapsed := time.Since(start)
-	e.metrics.scrapeErrors.Set(float64(errcount))
-	e.metrics.scrapeErrors.Collect(ch)
-	e.metrics.scrapeLatency.Set(elapsed.Seconds())
-	e.metrics.scrapeLatency.Collect(ch)
+	ch <- prometheus.MustNewConstMetric(e.metrics.scrapeErrors, prometheus.GaugeValue, float64(errcount))
+	ch <- prometheus.MustNewConstMetric(e.metrics.scrapeLatency, prometheus.GaugeValue, elapsed.Seconds())
 
 	log.Debug().Dur("duration", elapsed).Msg("collect finished")
 }
@@ -58,7 +56,7 @@ func (e *RethinkdbExporter) collectRethinkStats(ctx context.Context, ch chan<- p
 			return errcount
 		}
 
-		err = e.processStat(ctx, ch, stat, wg)
+		err = e.processStat(ctx, stat, wg, ch)
 		if err != nil {
 			log.Warn().Err(err).Msg("error while processing stat")
 			errcount++
@@ -70,28 +68,7 @@ func (e *RethinkdbExporter) collectRethinkStats(ctx context.Context, ch chan<- p
 		errcount++
 	}
 
-	e.collectMetrics(ch)
-
 	return errcount
-}
-
-func (e *RethinkdbExporter) collectMetrics(ch chan<- prometheus.Metric) {
-	e.metrics.clusterClientConnections.Collect(ch)
-	e.metrics.clusterDocsPerSecond.Collect(ch)
-
-	e.metrics.serverClientConnections.Collect(ch)
-	e.metrics.serverDocsPerSecond.Collect(ch)
-	e.metrics.serverQueriesPerSecond.Collect(ch)
-
-	e.metrics.tableDocsPerSecond.Collect(ch)
-	if e.metrics.tableRowsCount != nil {
-		e.metrics.tableRowsCount.Collect(ch)
-	}
-
-	e.metrics.tableReplicaDocsPerSecond.Collect(ch)
-	e.metrics.tableReplicaCacheBytes.Collect(ch)
-	e.metrics.tableReplicaIO.Collect(ch)
-	e.metrics.tableReplicaDataBytes.Collect(ch)
 }
 
 type stat struct {
@@ -104,7 +81,7 @@ type stat struct {
 }
 
 type queryEngine struct {
-	ClientConnections int     `rethinkdb:"client_connections"`
+	ClientConnections float64 `rethinkdb:"client_connections"`
 	QPS               float64 `rethinkdb:"queries_per_sec"`
 	ReadDocsPerSec    float64 `rethinkdb:"read_docs_per_sec"`
 	WrittenDocsPerSec float64 `rethinkdb:"written_docs_per_sec"`
@@ -112,62 +89,61 @@ type queryEngine struct {
 
 type storageEngine struct {
 	Cache struct {
-		InUseBytes int `rethinkdb:"in_use_bytes"`
+		InUseBytes float64 `rethinkdb:"in_use_bytes"`
 	} `rethinkdb:"cache"`
 	Disk struct {
-		ReadBytesPerSec    int `rethinkdb:"read_bytes_per_sec"`
-		WrittenBytesPerSec int `rethinkdb:"written_bytes_per_sec"`
+		ReadBytesPerSec    float64 `rethinkdb:"read_bytes_per_sec"`
+		WrittenBytesPerSec float64 `rethinkdb:"written_bytes_per_sec"`
 		SpaceUsage         struct {
-			DataBytes int `rethinkdb:"data_bytes"`
+			DataBytes float64 `rethinkdb:"data_bytes"`
 		} `rethinkdb:"space_usage"`
 	} `rethinkdb:"disk"`
 }
 
 type info struct {
-	DocCountEstimates []int `rethinkdb:"doc_count_estimates"`
+	DocCountEstimates []float64 `rethinkdb:"doc_count_estimates"`
 }
 
-func (e *RethinkdbExporter) processStat(ctx context.Context, ch chan<- prometheus.Metric, stat stat, wg *errgroup.Group) error {
+func (e *RethinkdbExporter) processStat(ctx context.Context, stat stat, wg *errgroup.Group, ch chan<- prometheus.Metric) error {
 	if len(stat.ID) == 0 {
 		return errors.New("unexpected empty stat id")
 	}
 	switch stat.ID[0] {
 	case "cluster":
-		e.processClusterStat(ch, stat)
+		e.processClusterStat(stat, ch)
 	case "server":
-		e.processServerStat(ch, stat)
+		e.processServerStat(stat, ch)
 	case "table":
-		e.processTableStat(ctx, ch, stat, wg)
+		e.processTableStat(ctx, stat, wg, ch)
 	case "table_server":
-		e.processTableServerStat(ch, stat)
+		e.processTableServerStat(stat, ch)
 	default:
 		return fmt.Errorf("unexpected stat id: '%v'", stat.ID[0])
 	}
 	return nil
 }
 
-func (e *RethinkdbExporter) processClusterStat(ch chan<- prometheus.Metric, stat stat) {
-	e.metrics.clusterClientConnections.Set(float64(stat.QueryEngine.ClientConnections))
+func (e *RethinkdbExporter) processClusterStat(stat stat, ch chan<- prometheus.Metric) {
+	ch <- prometheus.MustNewConstMetric(e.metrics.clusterClientConnections, prometheus.GaugeValue, stat.QueryEngine.ClientConnections)
 
-	e.metrics.clusterDocsPerSecond.WithLabelValues(readOperation).Set(stat.QueryEngine.ReadDocsPerSec)
-	e.metrics.clusterDocsPerSecond.WithLabelValues(writtenOperation).Set(stat.QueryEngine.WrittenDocsPerSec)
+	ch <- prometheus.MustNewConstMetric(e.metrics.clusterDocsPerSecond, prometheus.GaugeValue, stat.QueryEngine.ReadDocsPerSec, readOperation)
+	ch <- prometheus.MustNewConstMetric(e.metrics.clusterDocsPerSecond, prometheus.GaugeValue, stat.QueryEngine.WrittenDocsPerSec, writtenOperation)
 }
 
-func (e *RethinkdbExporter) processServerStat(ch chan<- prometheus.Metric, stat stat) {
-	e.metrics.serverClientConnections.WithLabelValues(stat.Server).Set(float64(stat.QueryEngine.ClientConnections))
+func (e *RethinkdbExporter) processServerStat(stat stat, ch chan<- prometheus.Metric) {
+	ch <- prometheus.MustNewConstMetric(e.metrics.serverClientConnections, prometheus.GaugeValue, stat.QueryEngine.ClientConnections, stat.Server)
 
-	e.metrics.serverDocsPerSecond.WithLabelValues(stat.Server, readOperation).Set(stat.QueryEngine.ReadDocsPerSec)
-	e.metrics.serverDocsPerSecond.WithLabelValues(stat.Server, writtenOperation).Set(stat.QueryEngine.WrittenDocsPerSec)
+	ch <- prometheus.MustNewConstMetric(e.metrics.serverDocsPerSecond, prometheus.GaugeValue, stat.QueryEngine.ReadDocsPerSec, stat.Server, readOperation)
+	ch <- prometheus.MustNewConstMetric(e.metrics.serverDocsPerSecond, prometheus.GaugeValue, stat.QueryEngine.WrittenDocsPerSec, stat.Server, writtenOperation)
 
-	e.metrics.serverQueriesPerSecond.WithLabelValues(stat.Server).Set(stat.QueryEngine.QPS)
+	ch <- prometheus.MustNewConstMetric(e.metrics.serverQueriesPerSecond, prometheus.GaugeValue, stat.QueryEngine.ReadDocsPerSec, stat.Server)
 }
 
-func (e *RethinkdbExporter) processTableStat(ctx context.Context, ch chan<- prometheus.Metric, stat stat, wg *errgroup.Group) {
-	e.metrics.tableDocsPerSecond.WithLabelValues(composeTableAndDB(stat), readOperation).Set(stat.QueryEngine.ReadDocsPerSec)
-	e.metrics.tableDocsPerSecond.WithLabelValues(composeTableAndDB(stat), writtenOperation).Set(stat.QueryEngine.WrittenDocsPerSec)
+func (e *RethinkdbExporter) processTableStat(ctx context.Context, stat stat, wg *errgroup.Group, ch chan<- prometheus.Metric) {
+	ch <- prometheus.MustNewConstMetric(e.metrics.tableDocsPerSecond, prometheus.GaugeValue, stat.QueryEngine.ReadDocsPerSec, stat.Database, stat.Table, readOperation)
+	ch <- prometheus.MustNewConstMetric(e.metrics.tableDocsPerSecond, prometheus.GaugeValue, stat.QueryEngine.WrittenDocsPerSec, stat.Database, stat.Table, writtenOperation)
 
 	if e.metrics.tableRowsCount != nil {
-		composedName := composeTableAndDB(stat)
 		dbName := stat.Database
 		tableName := stat.Table
 
@@ -175,7 +151,7 @@ func (e *RethinkdbExporter) processTableStat(ctx context.Context, ch chan<- prom
 			var info info
 			err := r.DB(dbName).Table(tableName).Info().ReadOne(&info, e.rconn, r.RunOpts{Context: ctx})
 			if err != nil {
-				log.Warn().Err(err).Str("table", composedName).Msg("failed to get table info")
+				log.Warn().Err(err).Str("db", dbName).Str("table", tableName).Msg("failed to get table info")
 				return err
 			}
 
@@ -184,24 +160,20 @@ func (e *RethinkdbExporter) processTableStat(ctx context.Context, ch chan<- prom
 				sum += float64(e)
 			}
 
-			e.metrics.tableRowsCount.WithLabelValues(composedName).Set(sum)
+			ch <- prometheus.MustNewConstMetric(e.metrics.tableRowsCount, prometheus.GaugeValue, sum, dbName, tableName)
 			return nil
 		})
 	}
 }
 
-func (e *RethinkdbExporter) processTableServerStat(ch chan<- prometheus.Metric, stat stat) {
-	e.metrics.tableReplicaDocsPerSecond.WithLabelValues(composeTableAndDB(stat), stat.Server, readOperation).Set(stat.QueryEngine.ReadDocsPerSec)
-	e.metrics.tableReplicaDocsPerSecond.WithLabelValues(composeTableAndDB(stat), stat.Server, writtenOperation).Set(stat.QueryEngine.WrittenDocsPerSec)
+func (e *RethinkdbExporter) processTableServerStat(stat stat, ch chan<- prometheus.Metric) {
+	ch <- prometheus.MustNewConstMetric(e.metrics.tableReplicaDocsPerSecond, prometheus.GaugeValue, stat.QueryEngine.ReadDocsPerSec, stat.Database, stat.Table, stat.Server, readOperation)
+	ch <- prometheus.MustNewConstMetric(e.metrics.tableReplicaDocsPerSecond, prometheus.GaugeValue, stat.QueryEngine.WrittenDocsPerSec, stat.Database, stat.Table, stat.Server, writtenOperation)
 
-	e.metrics.tableReplicaCacheBytes.WithLabelValues(composeTableAndDB(stat), stat.Server).Set(float64(stat.StorageEngine.Cache.InUseBytes))
+	ch <- prometheus.MustNewConstMetric(e.metrics.tableReplicaCacheBytes, prometheus.GaugeValue, stat.StorageEngine.Cache.InUseBytes, stat.Database, stat.Table, stat.Server)
 
-	e.metrics.tableReplicaIO.WithLabelValues(composeTableAndDB(stat), stat.Server, readOperation).Set(float64(stat.StorageEngine.Disk.ReadBytesPerSec))
-	e.metrics.tableReplicaIO.WithLabelValues(composeTableAndDB(stat), stat.Server, writtenOperation).Set(float64(stat.StorageEngine.Disk.WrittenBytesPerSec))
+	ch <- prometheus.MustNewConstMetric(e.metrics.tableReplicaIO, prometheus.GaugeValue, stat.StorageEngine.Disk.ReadBytesPerSec, stat.Database, stat.Table, stat.Server, readOperation)
+	ch <- prometheus.MustNewConstMetric(e.metrics.tableReplicaIO, prometheus.GaugeValue, stat.StorageEngine.Disk.WrittenBytesPerSec, stat.Database, stat.Table, stat.Server, writtenOperation)
 
-	e.metrics.tableReplicaDataBytes.WithLabelValues(composeTableAndDB(stat), stat.Server).Set(float64(stat.StorageEngine.Disk.SpaceUsage.DataBytes))
-}
-
-func composeTableAndDB(stat stat) string {
-	return fmt.Sprintf("%v.%v", stat.Database, stat.Table)
+	ch <- prometheus.MustNewConstMetric(e.metrics.tableReplicaDataBytes, prometheus.GaugeValue, stat.StorageEngine.Disk.SpaceUsage.DataBytes, stat.Database, stat.Table, stat.Server)
 }
