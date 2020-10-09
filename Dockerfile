@@ -1,14 +1,15 @@
+FROM golang:1.14.0 as build
+
+COPY . /src
+RUN set -ex \
+    && cd /src \
+    && CGO_ENABLED=0 go build -o /bin/prometheus-exporter
+
 FROM alpine:latest
 MAINTAINER CMogilko <cmogilko@gmail.com>
 
-RUN apk add --update -t build-deps go git make
+COPY --from=build /bin/prometheus-exporter /bin/prometheus-exporter
 
-COPY . /src
-
-RUN cd /src && go build -o /bin/prometheus-exporter
-RUN rm -rf /src
-
-RUN apk del --purge build-deps go git make
-
+USER nobody
 EXPOSE     9055
 ENTRYPOINT [ "/bin/prometheus-exporter" ]
