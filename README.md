@@ -6,7 +6,7 @@
 
 [RethinkDB](http://www.rethinkdb.com/) statistics exporter for [Prometheus](https://prometheus.io/).
 
-Current version: v1.0.0 (RethinkDB v2.4)
+Current version: v1.0.1 (RethinkDB v2.4)
 
 ## Build and Run
 Local build and run:
