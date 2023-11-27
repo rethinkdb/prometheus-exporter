@@ -1,4 +1,4 @@
-FROM golang:1.14.0 as build
+FROM golang:1.21 as build
 
 COPY . /src
 RUN set -ex \
